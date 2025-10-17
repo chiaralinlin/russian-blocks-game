@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russian Blocks</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow-x: hidden; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        const CELL_SIZE = 30;
+
+        const SHAPES = {
+          I: [[1,1,1,1]],
+          O: [[1,1],[1,1]],
+          T: [[0,1,0],[1,1,1]],
+          S: [[0,1,1],[1,1,0]],
+          Z: [[1,1,0],[0,1,1]],
+          J: [[1,0,0],[1,1,1]],
+          L: [[0,0,1],[1,1,1]]
+        };
+
+        const COLORS = {
+          I: '#00f0f0',
+          O: '#f0f000',
+          T: '#a000f0',
+          S: '#00f000',
+          Z: '#f00000',
+          J: '#0000f0',
+          L: '#f0a000'
+        };
+
+        const RotateCw = () => (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+        );
+
+        const Pause = () => (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        );
+
+        const Play = () => (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        );
+
+        const RotateCcw = () => (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 2v6h6M21 12a9 9 0 0 0-15-6.7L3 8M21 22v-6h-6M3 12a9 9 0 0 0 15 6.7L21 16"/>
+          </svg>
+        );
+
+        const TetrisGame = () => {
+          const [board, setBoard] = useState(() => 
+            Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0))
+          );
+          const [currentPiece, setCurrentPiece] = useState(null);
+          const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
+          const [score, setScore] = useState(0);
+          const [level, setLevel] = useState(1);
+          const [lines, setLines] = useState(0);
+          const [gameOver, setGameOver] = useState(false);
+          const [paused, setPaused] = useState(false);
+          const [nextPiece, setNextPiece] = useState(null);
+          
+          const gameLoopRef = useRef(null);
+          const dropSpeedRef = useRef(1000);
+
+          const createPiece = useCallback(() => {
+            const shapes = Object.keys(SHAPES);
+            const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+            return {
+              shape: SHAPES[randomShape],
+              type: randomShape,
+              color: COLORS[randomShape]
+            };
+          }, []);
+
+          const checkCollision = useCallback((piece, pos, boardState = board) => {
+            for (let y = 0; y < piece.shape.length; y++) {
+              for (let x = 0; x < piece.shape[y].length; x++) {
+                if (piece.shape[y][x]) {
+                  const newX = pos.x + x;
+                  const newY = pos.y + y;
+                  
+                  if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT) {
+                    return true;
+                  }
+                  if (newY >= 0 && boardState[newY][newX]) {
+                    return true;
+                  }
+                }
+              }
+            }
+            return false;
+          }, [board]);
+
+          const mergePiece = useCallback(() => {
+            const newBoard = board.map(row => [...row]);
+            
+            for (let y = 0; y < currentPiece.shape.length; y++) {
+              for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                if (currentPiece.shape[y][x]) {
+                  const boardY = currentPos.y + y;
+                  const boardX = currentPos.x + x;
+                  if (boardY >= 0) {
+                    newBoard[boardY][boardX] = currentPiece.color;
+                  }
+                }
+              }
+            }
+            
+            return newBoard;
+          }, [board, currentPiece, currentPos]);
+
+          const clearLines = useCallback((boardState) => {
+            let linesCleared = 0;
+            const newBoard = boardState.filter(row => {
+              if (row.every(cell => cell !== 0)) {
+                linesCleared++;
+                return false;
+              }
+              return true;
+            });
+            
+            while (newBoard.length < BOARD_HEIGHT) {
+              newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+            }
+            
+            if (linesCleared > 0) {
+              const points = [0, 100, 300, 500, 800][linesCleared];
+              setScore(prev => prev + points * level);
+              setLines(prev => {
+                const newLines = prev + linesCleared;
+                const newLevel = Math.floor(newLines / 10) + 1;
+                setLevel(newLevel);
+                dropSpeedRef.current = Math.max(100, 1000 - (newLevel - 1) * 100);
+                return newLines;
+              });
+            }
+            
+            return newBoard;
+          }, [level]);
+
+          const spawnPiece = useCallback(() => {
+            const piece = nextPiece || createPiece();
+            const startX = Math.floor((BOARD_WIDTH - piece.shape[0].length) / 2);
+            const startY = 0;
+            
+            if (checkCollision(piece, { x: startX, y: startY })) {
+              setGameOver(true);
+              return false;
+            }
+            
+            setCurrentPiece(piece);
+            setCurrentPos({ x: startX, y: startY });
+            setNextPiece(createPiece());
+            return true;
+          }, [nextPiece, createPiece, checkCollision]);
+
+          const moveDown = useCallback(() => {
+            if (!currentPiece || gameOver || paused) return;
+            
+            const newPos = { ...currentPos, y: currentPos.y + 1 };
+            
+            if (checkCollision(currentPiece, newPos)) {
+              const mergedBoard = mergePiece();
+              const clearedBoard = clearLines(mergedBoard);
+              setBoard(clearedBoard);
+              spawnPiece();
+            } else {
+              setCurrentPos(newPos);
+            }
+          }, [currentPiece, currentPos, checkCollision, mergePiece, clearLines, spawnPiece, gameOver, paused]);
+
+          const moveHorizontal = useCallback((dir) => {
+            if (!currentPiece || gameOver || paused) return;
+            
+            const newPos = { ...currentPos, x: currentPos.x + dir };
+            
+            if (!checkCollision(currentPiece, newPos)) {
+              setCurrentPos(newPos);
+            }
+          }, [currentPiece, currentPos, checkCollision, gameOver, paused]);
+
+          const rotate = useCallback(() => {
+            if (!currentPiece || gameOver || paused) return;
+            
+            const rotated = currentPiece.shape[0].map((_, i) =>
+              currentPiece.shape.map(row => row[i]).reverse()
+            );
+            
+            const rotatedPiece = { ...currentPiece, shape: rotated };
+            
+            if (!checkCollision(rotatedPiece, currentPos)) {
+              setCurrentPiece(rotatedPiece);
+            }
+          }, [currentPiece, currentPos, checkCollision, gameOver, paused]);
+
+          const hardDrop = useCallback(() => {
+            if (!currentPiece || gameOver || paused) return;
+            
+            let newY = currentPos.y;
+            while (!checkCollision(currentPiece, { ...currentPos, y: newY + 1 })) {
+              newY++;
+            }
+            
+            setCurrentPos({ ...currentPos, y: newY });
+            setTimeout(() => moveDown(), 50);
+          }, [currentPiece, currentPos, checkCollision, moveDown, gameOver, paused]);
+
+          const resetGame = useCallback(() => {
+            setBoard(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0)));
+            setScore(0);
+            setLevel(1);
+            setLines(0);
+            setGameOver(false);
+            setPaused(false);
+            setNextPiece(null);
+            dropSpeedRef.current = 1000;
+            setCurrentPiece(null);
+          }, []);
+
+          useEffect(() => {
+            if (!currentPiece && !gameOver) {
+              spawnPiece();
+            }
+          }, [currentPiece, gameOver, spawnPiece]);
+
+          useEffect(() => {
+            if (gameOver || paused || !currentPiece) return;
+            
+            gameLoopRef.current = setInterval(() => {
+              moveDown();
+            }, dropSpeedRef.current);
+            
+            return () => clearInterval(gameLoopRef.current);
+          }, [moveDown, gameOver, paused, currentPiece]);
+
+          useEffect(() => {
+            const handleKeyDown = (e) => {
+              if (gameOver) return;
+              
+              switch(e.key) {
+                case 'ArrowLeft':
+                  e.preventDefault();
+                  moveHorizontal(-1);
+                  break;
+                case 'ArrowRight':
+                  e.preventDefault();
+                  moveHorizontal(1);
+                  break;
+                case 'ArrowDown':
+                  e.preventDefault();
+                  moveDown();
+                  break;
+                case 'ArrowUp':
+                case ' ':
+                  e.preventDefault();
+                  rotate();
+                  break;
+                case 'Enter':
+                  e.preventDefault();
+                  hardDrop();
+                  break;
+                case 'p':
+                  e.preventDefault();
+                  setPaused(p => !p);
+                  break;
+              }
+            };
+            
+            window.addEventListener('keydown', handleKeyDown);
+            return () => window.removeEventListener('keydown', handleKeyDown);
+          }, [moveHorizontal, moveDown, rotate, hardDrop, gameOver]);
+
+          const renderBoard = () => {
+            const displayBoard = board.map(row => [...row]);
+            
+            if (currentPiece) {
+              for (let y = 0; y < currentPiece.shape.length; y++) {
+                for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                  if (currentPiece.shape[y][x]) {
+                    const boardY = currentPos.y + y;
+                    const boardX = currentPos.x + x;
+                    if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
+                      displayBoard[boardY][boardX] = currentPiece.color;
+                    }
+                  }
+                }
+              }
+            }
+            
+            return displayBoard;
+          };
+
+          const renderPreview = (piece) => {
+            if (!piece) return null;
+            
+            return (
+              <div className="inline-block bg-gray-800 p-2 rounded">
+                {piece.shape.map((row, y) => (
+                  <div key={y} className="flex">
+                    {row.map((cell, x) => (
+                      <div
+                        key={x}
+                        className="border border-gray-700"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          backgroundColor: cell ? piece.color : 'transparent'
+                        }}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          };
+
+          const displayBoard = renderBoard();
+
+          return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
+              <div className="mb-4">
+                <h1 className="text-4xl font-bold text-white text-center mb-2">Russian Blocks</h1>
+              </div>
+              
+              <div className="flex flex-wrap gap-4 justify-center items-start">
+                <div className="bg-gray-900 p-4 rounded-lg shadow-2xl">
+                  <div 
+                    className="border-4 border-gray-700 bg-black"
+                    style={{ 
+                      width: BOARD_WIDTH * CELL_SIZE,
+                      height: BOARD_HEIGHT * CELL_SIZE
+                    }}
+                  >
+                    {displayBoard.map((row, y) => (
+                      <div key={y} className="flex">
+                        {row.map((cell, x) => (
+                          <div
+                            key={x}
+                            className="border border-gray-800"
+                            style={{
+                              width: CELL_SIZE,
+                              height: CELL_SIZE,
+                              backgroundColor: cell || '#000',
+                              boxShadow: cell ? 'inset 0 0 5px rgba(255,255,255,0.3)' : 'none'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-4">
+                  <div className="bg-gray-900 p-4 rounded-lg shadow-xl text-white min-w-[180px]">
+                    <h3 className="text-lg font-bold mb-2">Score</h3>
+                    <p className="text-3xl font-bold text-yellow-400">{score}</p>
+                    <div className="mt-4">
+                      <p className="text-sm">Level: <span className="font-bold">{level}</span></p>
+                      <p className="text-sm">Lines: <span className="font-bold">{lines}</span></p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-900 p-4 rounded-lg shadow-xl text-white">
+                    <h3 className="text-lg font-bold mb-2">Next</h3>
+                    <div className="flex justify-center">
+                      {renderPreview(nextPiece)}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-900 p-4 rounded-lg shadow-xl text-white">
+                    <h3 className="text-sm font-bold mb-2">Controls</h3>
+                    <div className="text-xs space-y-1">
+                      <p>← → Move</p>
+                      <p>↑ / Space: Rotate</p>
+                      <p>↓ Soft drop</p>
+                      <p>Enter: Hard drop</p>
+                      <p>P: Pause</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex gap-3 flex-wrap justify-center">
+                <button
+                  onClick={() => moveHorizontal(-1)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg active:scale-95 transition"
+                >
+                  ← Left
+                </button>
+                <button
+                  onClick={() => moveHorizontal(1)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg active:scale-95 transition"
+                >
+                  Right →
+                </button>
+                <button
+                  onClick={rotate}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center gap-2"
+                >
+                  <RotateCw /> Rotate
+                </button>
+                <button
+                  onClick={hardDrop}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg active:scale-95 transition"
+                >
+                  ↓ Drop
+                </button>
+                <button
+                  onClick={() => setPaused(!paused)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center gap-2"
+                >
+                  {paused ? <><Play /> Resume</> : <><Pause /> Pause</>}
+                </button>
+                <button
+                  onClick={resetGame}
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center gap-2"
+                >
+                  <RotateCcw /> New Game
+                </button>
+              </div>
+              
+              {gameOver && (
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+                  <div className="bg-gray-900 p-8 rounded-lg shadow-2xl text-center max-w-md">
+                    <h2 className="text-4xl font-bold text-red-500 mb-4">Game Over!</h2>
+                    <p className="text-2xl text-white mb-2">Final Score: <span className="text-yellow-400 font-bold">{score}</span></p>
+                    <p className="text-lg text-gray-300 mb-6">Level {level} • {lines} lines</p>
+                    <button
+                      onClick={resetGame}
+                      className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold text-lg shadow-lg"
+                    >
+                      Play Again
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {paused && !gameOver && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40">
+                  <div className="bg-gray-900 p-8 rounded-lg shadow-2xl text-center">
+                    <h2 className="text-3xl font-bold text-white mb-4">Paused</h2>
+                    <p className="text-gray-300">Press P or click Resume to continue</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        ReactDOM.render(<TetrisGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>
