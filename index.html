@@ -2,575 +2,156 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="Classic Russian Blocks (Tetris) game - Play the timeless puzzle game in your browser!">
-    <meta name="theme-color" content="#1e1b4b">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Russian Blocks - Classic Tetris Game</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhino & Grasshopper Learning Hub</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden;
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
         * {
-            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        @media (max-width: 640px) {
-            html, body, #root {
-                height: 100vh;
-                height: 100dvh;
-            }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
         }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-    
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
 
-        const BOARD_WIDTH = 10;
-        const BOARD_HEIGHT = 20;
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-        const SHAPES = {
-          I: [[1,1,1,1]],
-          O: [[1,1],[1,1]],
-          T: [[0,1,0],[1,1,1]],
-          S: [[0,1,1],[1,1,0]],
-          Z: [[1,1,0],[0,1,1]],
-          J: [[1,0,0],[1,1,1]],
-          L: [[0,0,1],[1,1,1]]
-        };
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-        const COLORS = {
-          I: '#00f0f0',
-          O: '#f0f000',
-          T: '#a000f0',
-          S: '#00f000',
-          Z: '#f00000',
-          J: '#0000f0',
-          L: '#f0a000'
-        };
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-        const RotateCw = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8"/>
-          </svg>
-        );
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
 
-        const Pause = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
-          </svg>
-        );
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
 
-        const Play = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="5 3 19 12 5 21 5 3"/>
-          </svg>
-        );
+        .nav-links a:hover {
+            color: #667eea;
+        }
 
-        const RotateCcw = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 2v6h6M21 12a9 9 0 0 0-15-6.7L3 8"/>
-          </svg>
-        );
+        .hero {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: white;
+        }
 
-        const ArrowLeft = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-        );
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            animation: fadeInUp 0.8s ease;
+        }
 
-        const ArrowRight = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        );
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
 
-        const ArrowDown = ({ size = 24 }) => (
-          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <path d="M12 5v14M19 12l-7 7-7-7"/>
-          </svg>
-        );
+        .cta-btn {
+            background: white;
+            color: #667eea;
+            padding: 1rem 2.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
 
-        const TetrisGame = () => {
-          const [board, setBoard] = useState(() => 
-            Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0))
-          );
-          const [currentPiece, setCurrentPiece] = useState(null);
-          const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
-          const [score, setScore] = useState(0);
-          const [level, setLevel] = useState(1);
-          const [lines, setLines] = useState(0);
-          const [gameOver, setGameOver] = useState(false);
-          const [paused, setPaused] = useState(false);
-          const [nextPiece, setNextPiece] = useState(null);
-          const [cellSize, setCellSize] = useState(25);
-          
-          const gameLoopRef = useRef(null);
-          const dropSpeedRef = useRef(1000);
-          const touchStartRef = useRef({ x: 0, y: 0 });
+        .cta-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
 
-          useEffect(() => {
-            const calculateCellSize = () => {
-              const vh = window.innerHeight;
-              const vw = window.innerWidth;
-              
-              if (vw < 640) {
-                const availableHeight = vh - 280;
-                const availableWidth = vw - 32;
-                const sizeByHeight = Math.floor(availableHeight / BOARD_HEIGHT);
-                const sizeByWidth = Math.floor(availableWidth / BOARD_WIDTH);
-                setCellSize(Math.min(sizeByHeight, sizeByWidth, 28));
-              } else {
-                setCellSize(30);
-              }
-            };
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
 
-            calculateCellSize();
-            window.addEventListener('resize', calculateCellSize);
-            return () => window.removeEventListener('resize', calculateCellSize);
-          }, []);
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
 
-          const createPiece = useCallback(() => {
-            const shapes = Object.keys(SHAPES);
-            const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-            return {
-              shape: SHAPES[randomShape],
-              type: randomShape,
-              color: COLORS[randomShape]
-            };
-          }, []);
+        .section-title {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: #667eea;
+            text-align: center;
+        }
 
-          const checkCollision = useCallback((piece, pos, boardState = board) => {
-            for (let y = 0; y < piece.shape.length; y++) {
-              for (let x = 0; x < piece.shape[y].length; x++) {
-                if (piece.shape[y][x]) {
-                  const newX = pos.x + x;
-                  const newY = pos.y + y;
-                  
-                  if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT) {
-                    return true;
-                  }
-                  if (newY >= 0 && boardState[newY][newX]) {
-                    return true;
-                  }
-                }
-              }
-            }
-            return false;
-          }, [board]);
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
 
-          const mergePiece = useCallback(() => {
-            const newBoard = board.map(row => [...row]);
-            
-            for (let y = 0; y < currentPiece.shape.length; y++) {
-              for (let x = 0; x < currentPiece.shape[y].length; x++) {
-                if (currentPiece.shape[y][x]) {
-                  const boardY = currentPos.y + y;
-                  const boardX = currentPos.x + x;
-                  if (boardY >= 0) {
-                    newBoard[boardY][boardX] = currentPiece.color;
-                  }
-                }
-              }
-            }
-            
-            return newBoard;
-          }, [board, currentPiece, currentPos]);
+        .course-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
 
-          const clearLines = useCallback((boardState) => {
-            let linesCleared = 0;
-            const newBoard = boardState.filter(row => {
-              if (row.every(cell => cell !== 0)) {
-                linesCleared++;
-                return false;
-              }
-              return true;
-            });
-            
-            while (newBoard.length < BOARD_HEIGHT) {
-              newBoard.unshift(Array(BOARD_WIDTH).fill(0));
-            }
-            
-            if (linesCleared > 0) {
-              const points = [0, 100, 300, 500, 800][linesCleared];
-              setScore(prev => prev + points * level);
-              setLines(prev => {
-                const newLines = prev + linesCleared;
-                const newLevel = Math.floor(newLines / 10) + 1;
-                setLevel(newLevel);
-                dropSpeedRef.current = Math.max(100, 1000 - (newLevel - 1) * 100);
-                return newLines;
-              });
-            }
-            
-            return newBoard;
-          }, [level]);
+        .course-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
 
-          const spawnPiece = useCallback(() => {
-            const piece = nextPiece || createPiece();
-            const startX = Math.floor((BOARD_WIDTH - piece.shape[0].length) / 2);
-            const startY = 0;
-            
-            if (checkCollision(piece, { x: startX, y: startY })) {
-              setGameOver(true);
-              return false;
-            }
-            
-            setCurrentPiece(piece);
-            setCurrentPos({ x: startX, y: startY });
-            setNextPiece(createPiece());
-            return true;
-          }, [nextPiece, createPiece, checkCollision]);
+        .course-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
 
-          const moveDown = useCallback(() => {
-            if (!currentPiece || gameOver || paused) return;
-            
-            const newPos = { ...currentPos, y: currentPos.y + 1 };
-            
-            if (checkCollision(currentPiece, newPos)) {
-              const mergedBoard = mergePiece();
-              const clearedBoard = clearLines(mergedBoard);
-              setBoard(clearedBoard);
-              spawnPiece();
-            } else {
-              setCurrentPos(newPos);
-            }
-          }, [currentPiece, currentPos, checkCollision, mergePiece, clearLines, spawnPiece, gameOver, paused]);
+        .course-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
 
-          const moveHorizontal = useCallback((dir) => {
-            if (!currentPiece || gameOver || paused) return;
-            
-            const newPos = { ...currentPos, x: currentPos.x + dir };
-            
-            if (!checkCollision(currentPiece, newPos)) {
-              setCurrentPos(newPos);
-            }
-          }, [currentPiece, currentPos, checkCollision, gameOver, paused]);
+        .course-card p {
+            color: #666;
+            line-height: 1.6;
+        }
 
-          const rotate = useCallback(() => {
-            if (!currentPiece || gameOver || paused) return;
-            
-            const rotated = currentPiece.shape[0].map((_, i) =>
-              currentPiece.shape.map(row => row[i]).reverse()
-            );
-            
-            const rotatedPiece = { ...currentPiece, shape: rotated };
-            
-            if (!checkCollision(rotatedPiece, currentPos)) {
-              setCurrentPiece(rotatedPiece);
-            }
-          }, [currentPiece, currentPos, checkCollision, gameOver, paused]);
-
-          const hardDrop = useCallback(() => {
-            if (!currentPiece || gameOver || paused) return;
-            
-            let newY = currentPos.y;
-            while (!checkCollision(currentPiece, { ...currentPos, y: newY + 1 })) {
-              newY++;
-            }
-            
-            setCurrentPos({ ...currentPos, y: newY });
-            setTimeout(() => moveDown(), 50);
-          }, [currentPiece, currentPos, checkCollision, moveDown, gameOver, paused]);
-
-          const resetGame = useCallback(() => {
-            setBoard(Array(BOARD_HEIGHT).fill(null).map(() => Array(BOARD_WIDTH).fill(0)));
-            setScore(0);
-            setLevel(1);
-            setLines(0);
-            setGameOver(false);
-            setPaused(false);
-            setNextPiece(null);
-            dropSpeedRef.current = 1000;
-            setCurrentPiece(null);
-          }, []);
-
-          useEffect(() => {
-            if (!currentPiece && !gameOver) {
-              spawnPiece();
-            }
-          }, [currentPiece, gameOver, spawnPiece]);
-
-          useEffect(() => {
-            if (gameOver || paused || !currentPiece) return;
-            
-            gameLoopRef.current = setInterval(() => {
-              moveDown();
-            }, dropSpeedRef.current);
-            
-            return () => clearInterval(gameLoopRef.current);
-          }, [moveDown, gameOver, paused, currentPiece]);
-
-          useEffect(() => {
-            const handleKeyDown = (e) => {
-              if (gameOver) return;
-              
-              switch(e.key) {
-                case 'ArrowLeft':
-                  e.preventDefault();
-                  moveHorizontal(-1);
-                  break;
-                case 'ArrowRight':
-                  e.preventDefault();
-                  moveHorizontal(1);
-                  break;
-                case 'ArrowDown':
-                  e.preventDefault();
-                  moveDown();
-                  break;
-                case 'ArrowUp':
-                case ' ':
-                  e.preventDefault();
-                  rotate();
-                  break;
-                case 'Enter':
-                  e.preventDefault();
-                  hardDrop();
-                  break;
-                case 'p':
-                  e.preventDefault();
-                  setPaused(p => !p);
-                  break;
-              }
-            };
-            
-            window.addEventListener('keydown', handleKeyDown);
-            return () => window.removeEventListener('keydown', handleKeyDown);
-          }, [moveHorizontal, moveDown, rotate, hardDrop, gameOver]);
-
-          const handleTouchStart = (e) => {
-            const touch = e.touches[0];
-            touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-          };
-
-          const handleTouchEnd = (e) => {
-            const touch = e.changedTouches[0];
-            const deltaX = touch.clientX - touchStartRef.current.x;
-            const deltaY = touch.clientY - touchStartRef.current.y;
-            const absDeltaX = Math.abs(deltaX);
-            const absDeltaY = Math.abs(deltaY);
-
-            if (absDeltaX < 30 && absDeltaY < 30) {
-              rotate();
-              return;
-            }
-
-            if (absDeltaX > absDeltaY) {
-              if (deltaX > 0) {
-                moveHorizontal(1);
-              } else {
-                moveHorizontal(-1);
-              }
-            } else {
-              if (deltaY > 0) {
-                moveDown();
-              }
-            }
-          };
-
-          const renderBoard = () => {
-            const displayBoard = board.map(row => [...row]);
-            
-            if (currentPiece) {
-              for (let y = 0; y < currentPiece.shape.length; y++) {
-                for (let x = 0; x < currentPiece.shape[y].length; x++) {
-                  if (currentPiece.shape[y][x]) {
-                    const boardY = currentPos.y + y;
-                    const boardX = currentPos.x + x;
-                    if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
-                      displayBoard[boardY][boardX] = currentPiece.color;
-                    }
-                  }
-                }
-              }
-            }
-            
-            return displayBoard;
-          };
-
-          const renderPreview = (piece) => {
-            if (!piece) return null;
-            
-            const previewSize = window.innerWidth < 640 ? 16 : 20;
-            
-            return (
-              <div className="inline-block bg-gray-800 p-2 rounded">
-                {piece.shape.map((row, y) => (
-                  <div key={y} className="flex">
-                    {row.map((cell, x) => (
-                      <div
-                        key={x}
-                        className="border border-gray-700"
-                        style={{
-                          width: previewSize,
-                          height: previewSize,
-                          backgroundColor: cell ? piece.color : 'transparent'
-                        }}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            );
-          };
-
-          const displayBoard = renderBoard();
-
-          return (
-            <div className="flex flex-col items-center justify-between min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-2 sm:p-4 sm:justify-center">
-              <div className="w-full max-w-md sm:mb-4">
-                <h1 className="text-2xl sm:text-4xl font-bold text-white text-center mb-2 sm:mb-3">Russian Blocks</h1>
-              </div>
-              
-              <div className="flex gap-2 sm:gap-4 items-start justify-center mb-2 sm:mb-3">
-                <div className="bg-gray-900 p-2 sm:p-3 rounded-lg">
-                  <div className="mb-3">
-                    <div className="text-center mb-2">
-                      <p className="text-xs text-gray-400">Score</p>
-                      <p className="text-xl font-bold text-yellow-400">{score}</p>
-                    </div>
-                    <div className="text-center mb-2">
-                      <p className="text-xs text-gray-400">Level</p>
-                      <p className="text-xl font-bold text-white">{level}</p>
-                    </div>
-                    <div className="text-center mb-3">
-                      <p className="text-xs text-gray-400">Lines</p>
-                      <p className="text-xl font-bold text-white">{lines}</p>
-                    </div>
-                  </div>
-                  
-                  <p className="text-xs sm:text-sm text-white mb-1 text-center">Next</p>
-                  <div className="flex justify-center mb-3">
-                    {renderPreview(nextPiece)}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setPaused(!paused)}
-                      className="w-full bg-purple-600 active:bg-purple-700 text-white p-2 rounded font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-1 text-xs"
-                    >
-                      {paused ? <><Play size={20} /> Resume</> : <><Pause size={20} /> Pause</>}
-                    </button>
-                    <button
-                      onClick={resetGame}
-                      className="w-full bg-red-600 active:bg-red-700 text-white p-2 rounded font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-1 text-xs"
-                    >
-                      <RotateCcw size={20} />
-                      <span>New</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-900 p-2 sm:p-3 rounded-lg shadow-2xl">
-                  <div 
-                    className="border-2 sm:border-4 border-gray-700 bg-black mb-2"
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                    style={{ 
-                      width: BOARD_WIDTH * cellSize,
-                      height: BOARD_HEIGHT * cellSize
-                    }}
-                  >
-                    {displayBoard.map((row, y) => (
-                      <div key={y} className="flex">
-                        {row.map((cell, x) => (
-                          <div
-                            key={x}
-                            className="border border-gray-800"
-                            style={{
-                              width: cellSize,
-                              height: cellSize,
-                              backgroundColor: cell || '#000',
-                              boxShadow: cell ? 'inset 0 0 3px rgba(255,255,255,0.3)' : 'none'
-                            }}
-                          />
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => moveHorizontal(-1)}
-                        className="bg-blue-600 active:bg-blue-700 text-white p-2 sm:p-3 rounded font-bold shadow-lg active:scale-95 transition flex items-center justify-center"
-                      >
-                        <ArrowLeft size={24} />
-                      </button>
-                      <button
-                        onClick={hardDrop}
-                        className="bg-orange-600 active:bg-orange-700 text-white p-2 sm:p-3 rounded font-bold shadow-lg active:scale-95 transition flex items-center justify-center"
-                      >
-                        <ArrowDown size={24} />
-                      </button>
-                      <button
-                        onClick={() => moveHorizontal(1)}
-                        className="bg-blue-600 active:bg-blue-700 text-white p-2 sm:p-3 rounded font-bold shadow-lg active:scale-95 transition flex items-center justify-center"
-                      >
-                        <ArrowRight size={24} />
-                      </button>
-                    </div>
-                    <button
-                      onClick={rotate}
-                      className="w-full bg-green-600 active:bg-green-700 text-white p-2 sm:p-3 rounded font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"
-                    >
-                      <RotateCw size={24} />
-                      <span>Rotate</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {gameOver && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-                  <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-2xl text-center max-w-md w-full">
-                    <h2 className="text-3xl sm:text-4xl font-bold text-red-500 mb-4">Game Over!</h2>
-                    <p className="text-xl sm:text-2xl text-white mb-2">Score: <span className="text-yellow-400 font-bold">{score}</span></p>
-                    <p className="text-base sm:text-lg text-gray-300 mb-6">Level {level} • {lines} lines</p>
-                    <button
-                      onClick={resetGame}
-                      className="bg-green-600 active:bg-green-700 text-white px-8 py-3 rounded-lg font-bold text-lg shadow-lg w-full"
-                    >
-                      Play Again
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {paused && !gameOver && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
-                  <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-2xl text-center">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">Paused</h2>
-                    <p className="text-gray-300 mb-4">Tap Resume to continue</p>
-                    <button
-                      onClick={() => setPaused(false)}
-                      className="bg-purple-600 active:bg-purple-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg"
-                    >
-                      Resume
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        };
-
-        ReactDOM.render(<TetrisGame />, document.getElementById('root'));
-    </script>
-</body>
-</html>
